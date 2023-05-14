@@ -50,17 +50,34 @@ async def get_wallet_zk(web3_zksync, code, currency):
     signer_eth = EthereumSignerWeb3(wallet["wallet"])
     web3 = Web3(Web3.HTTPProvider(get_current_provider('ethereum')['rpc']))
 
-    if currency == 'USDT' or currency == 'USDC':
-        amount = user_info['amount'] * 1000000 + code
-    else:
-        amount = (web3.toWei(user_info['amount'], 'ether') // 1000000 + code) * 1000000
-
     zksync = ZkSync(account=wallet["wallet"], web3=web3,
                     zksync_contract_address=zk_contracts.main_contract)
     ethereum_provider = EthereumProvider(web3, zksync)
     zk_sigher = ZkSyncSigner.from_account(wallet["wallet"], lib, network.mainnet)
     _wallet = Wallet(ethereum_provider=ethereum_provider, zk_signer=zk_sigher,
                      eth_signer=signer_eth, provider=web3_zksync)
+
+    # check balance
+    account_state = await _wallet.get_account_state()
+    committed_balance = account_state.committed.balances.get(user_info['type_currency'].upper())
+    logger.info(f'commited balance - {committed_balance}')
+    minus = 2800000000000000
+    amount = committed_balance - minus
+
+    logger.info(f'amount = {amount}')
+    amount = web3.fromWei(amount, 'ether')
+    logger.info(f'amount = {amount}')
+    amount = float(amount) + transfer_limit[chain_from][chain_to][type_currency]['withholding_fee']
+    amount = round(amount, 4)
+    logger.info(f'amount = {amount}')
+
+    if currency == 'USDT' or currency == 'USDC':
+        amount = user_info['amount'] * 1000000 + code
+    else:
+        amount = (web3.toWei(amount, 'ether') // 1000000 + code) * 1000000
+        # amount = (web3.toWei(user_info['amount'], 'ether') // 1000000 + code) * 1000000
+
+    
     return _wallet, amount
 
 async def unlock_zk_wallet(wallet):
@@ -181,12 +198,16 @@ def bridge(user_info):
 
 if __name__ == '__main__':
     wallets = get_all_wallets(get_main_wallet())
-    chain_from = str(input('Specify the network with which you want to bridge: Ethereum, Arbitrum, Optimism, Matic, BSC, Nova, Zksync lite \n')).lower()
-    chain_to = str(input('Specify the network where we are going to bridge: Ethereum, Arbitrum, Optimism, Matic, BSC, Nova, Zksync lite \n')).lower()
+    chain_from = str('Zksync lite').lower()
+    # chain_from = str(input('Specify the network with which you want to bridge: Ethereum, Arbitrum, Optimism, Matic, BSC, Nova, Zksync lite \n')).lower()
+    chain_to = str('Zksync era').lower()
+    # chain_to = str(input('Specify the network where we are going to bridge: Ethereum, Arbitrum, Optimism, Matic, BSC, Nova, Zksync lite, Zksync era\n')).lower()
     chain_from = '_'.join(chain_from.split(' '))
     chain_to = '_'.join(chain_to.split(' '))
-    trx_count = int(input('Number of transaction'))
-    type_currency = str(input('eth, usdt , usdc, dai')).lower()
+    trx_count = 1
+    # trx_count = int(input('Number of transaction'))
+    type_currency = 'eth'
+    # type_currency = str(input('eth, usdt , usdc, dai')).lower()
     is_correct_chain = False
     while not is_correct_chain:
        try:
@@ -212,10 +233,12 @@ if __name__ == '__main__':
             with open(f'helper.txt', 'r', encoding='utf-8') as file:
                 for row in file:
                     logger.info(row)
-            chain_to = str(input('Specify the network where we are going to bridge: Ethereum, Arbitrum, Optimism, Matic, BSC, Nova \n')).lower()
+            chain_to = str(input('Specify the network where we are going to bridge: Ethereum, Arbitrum, Optimism, Matic, BSC, Nova, Era \n')).lower()
             type_currency = str(input('eth, usdt , usdc, dai')).lower()
 
-    amount = float(input('how much amount transfer to bridge?'))
+    amount = float(0.005)
+
+    # amount = float(input('how much amount transfer to bridge?'))
     amount_check = False
     while not amount_check:
         cur_limit = transfer_limit[chain_from][chain_to][type_currency]
@@ -231,13 +254,15 @@ if __name__ == '__main__':
             amount = float(input('how much amount transfer to bridge?'))
     logger.info(f'c - min amount {amount} for tx in {type_currency}')
 
-    multith = str(input("multithreading? - y/n \n"))
-    if multith == 'Y' or multith == 'y':
-        threads = int(input("number of threads? \n"))
-    else:
-        threads = 1
+    threads = 1
+    # multith = str(input("multithreading? - y/n \n"))
+    # if multith == 'Y' or multith == 'y':
+    #     threads = int(input("number of threads? \n"))
+    # else:
+    #     threads = 1
 
-    pool = Pool(threads)
+
+    # pool = Pool(threads)
     collections_user_info = []
 
     for wallet in wallets:
@@ -249,10 +274,12 @@ if __name__ == '__main__':
             'code': chain_to,
             'wallet': wallet,
         }
-
+        print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+        bridge(user_info)
         collections_user_info.append(user_info)
 
-    pool.map(bridge, collections_user_info)
-    pool.close()
+    
+    # pool.map(bridge, collections_user_info)
+    # pool.close()
     logger.info('task complete')
 

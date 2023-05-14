@@ -15,7 +15,7 @@ def get_all_wallets(list):
     for wallet in list:
         if len(wallet) == 0:
             continue
-        if len(wallet) == 64:
+        if len(wallet) == 64 or len(wallet) == 66:
             cWallet = web3.eth.account.from_key(wallet)
 
             _wallets.append({'wallet': cWallet})

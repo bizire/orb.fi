@@ -53,6 +53,7 @@ orbiter_network_code = {
     'matic': 9006,
     'optimism': 9007,
     'IMX': 9008,
+    'zksync_era': 9014,
     'bsc': 9015,
     'nova': 9016
 }
@@ -773,6 +774,13 @@ transfer_limit = {
                         'min': 0.005,
                         'max': 10,
                         'withholding_fee': 0.0005
+                    },
+                },
+        'zksync_era': {
+                    'eth': {
+                        'min': 0.005,
+                        'max': 10,
+                        'withholding_fee': 0.0018
                     },
                 },
         'nova': {
